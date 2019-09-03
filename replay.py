@@ -110,8 +110,10 @@ class PybarSim(object):
                 yield data
 
 if __name__ == '__main__':
+    import time
     # Create data from two modules
     sim_mod_1 = PybarSim(address='tcp://127.0.0.1:5678', delay=0.0)
     sim_mod_2 = PybarSim(address='tcp://127.0.0.1:5679', delay=0.0)
-    sim_mod_1.replay('unit_test_data_2.h5')
-    sim_mod_2.replay('unit_test_data_5.h5')
+    sim_mod_1.replay('media/unit_test_data_5.h5')
+    time.sleep(2)
+    sim_mod_2.replay('media/unit_test_data_5.h5')
