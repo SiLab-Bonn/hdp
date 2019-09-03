@@ -13,11 +13,12 @@ def pix_idx_to_pos(col, row, detector):
 
 
 _MAX_HITS = 20  # maximum hits to visualize, new hits delete old
-_MAX_TRACKS = 5  # maximum hits to visualize, new tracks are only drawn when old ones faded out
+_MAX_TRACKS = 3  # maximum hits to visualize, new tracks are only drawn when old ones faded out
+_CLEAR_COLOR = (0.9, 0.9, 0.9, 1)
 
 
 class Hit(object):
-    dx, dy = 1, 1
+    dx, dy = 1.5, 1.5
 
     def __init__(self, x, y):
         self.x = x - self.dx
@@ -42,7 +43,7 @@ class Hit(object):
 
         
 class Track(object):
-    dx, dy = 1, 1
+    dx, dy = 1.5, 1.5
 
     def __init__(self, p1, p2):
         self.p1 = p1
@@ -65,7 +66,7 @@ class Track(object):
         # Show track
         pyglet.graphics.draw(2, GL_LINES, ('v3f', (self.track_start[0], self.track_start[1], self.track_start[2],
                                                    self.track_stop[0], self.track_stop[1], self.track_stop[2])),
-                                          ('c4B', (0, 0, 255, alpha, 0, 0, 255, alpha)))
+                                          ('c4B', (0, 128, 187, alpha, 0, 128, 187, alpha)))
         # Show track hits too
         alpha = 255
         x, y = self.p1[0], self.p1[1]
@@ -88,7 +89,7 @@ class Module(object):
     ''' Single module of the telescope '''
 
     def __init__(self, x, y, z):
-        detector_image = pyglet.image.load('DC.png')
+        detector_image = pyglet.image.load('media/DC.png')
         detector = pyglet.sprite.Sprite(detector_image, x=x, y=y, subpixel=True)
         detector.scale = 0.1
         detector.rotation = 180
@@ -135,14 +136,17 @@ class Telescope(object):
 
     def __init__(self, x=0, y=0, z=0):
         self.rotation = 0  # telescope rotation
-        self.rot_speed = 0
+        self.rot_speed = 20
 
         self.modules = []
         self.modules.append(Module(x, y, 0))
         self.modules.append(Module(x, y, 20))
         
         self.tracks = []
-        self.tracks.append(Track((x, y, -1000), (x, y, 1000)))
+        
+        self.hit_sound = pyglet.media.load('media/hit.wav', streaming=False)
+        self.track_sound = pyglet.media.load('media/track.wav', streaming=False)
+        self.play_sounds = 0
         
     def add_module_hits(self, module_hits):
         has_hits = []
@@ -152,6 +156,8 @@ class Telescope(object):
                 has_hits.append(True)
             else:
                 has_hits.append(False)
+        if self.play_sounds > 1 and any(has_hits):
+            self.hit_sound.play()
         # Print a track if all modules are hit in this readout
         # Only print one track candidate if many tracks are possible
         try:
@@ -160,6 +166,12 @@ class Telescope(object):
                     hit_1 = (self.modules[0].hits[-1].x, self.modules[0].hits[-1].y, self.modules[0].detector.z)
                     hit_2 = (self.modules[1].hits[-1].x, self.modules[1].hits[-1].y, self.modules[1].detector.z)
                     self.tracks.append(Track(hit_1, hit_2))
+                    glClearColor(0.95, 0.95, 0.95, 1)
+                    def reset_background(_):
+                        glClearColor(*_CLEAR_COLOR)
+                    pyglet.clock.schedule_once(reset_background, 0.1)
+                    if self.play_sounds:
+                        self.track_sound.play()
         except IndexError:
             pass
             
@@ -171,8 +183,7 @@ class Telescope(object):
             m.update(dt)
         for i in range(len(self.tracks) - 1, -1, -1):
             if not self.tracks[i].update(dt):
-                del self.tracks[i]
-                
+                del self.tracks[i]                
 
     def draw(self):
         ''' Called for every frame '''
@@ -187,7 +198,7 @@ class Telescope(object):
 class Camera(object):
     ''' 3d camera movements '''
 
-    def __init__(self, pos=[0, -60, 80], rot=[40, 0]):
+    def __init__(self, pos=[0, -55, 80], rot=[40, 0]):
         self.init_pos = pos
         self.init_rot = rot
         self.pos = list(self.init_pos)
@@ -248,9 +259,27 @@ class App(pyglet.window.Window):
         self.camera = Camera()
         self.io = pybario.IO(addresses=['tcp://127.0.0.1:5678', 'tcp://127.0.0.1:5679'], max_hits=_MAX_HITS)
 
+        # Interface
         self.fps = pyglet.window.FPSDisplay(window=self)
-        self.text = pyglet.text.Label("Play", font_name="Arial", font_size=32, x=10, y=10, anchor_x='center', anchor_y='center',
-                                      color=(255, 0, 255, 100))
+        self.fps.label.font_size = 12
+        # Legend
+        self.text = pyglet.text.Label("Pixeltreffer", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height,
+                                      anchor_x='left', anchor_y='center', color=(255, 0, 0, 220))
+        self.text_2 = pyglet.text.Label("Teilchenspuren", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height - 50,
+                                      anchor_x='left', anchor_y='center', color=(0, 128, 187, 220))
+        
+        self.logo = pyglet.sprite.Sprite(pyglet.image.load('media/Silab.png'), x=self.width * 0.98, y=self.height * 0.98, subpixel=True)
+        self.logo.scale = 0.2
+        self.logo.x -= self.logo.width
+        self.logo.y -= self.logo.height   
+        
+        self.sound_logo = pyglet.sprite.Sprite(pyglet.image.load('media/sound_off.png'), x=self.width * 0.98, y=self.height * 0.02, subpixel=True)     
+        self.sound_logo.scale = 0.2
+        self.sound_logo.x -= self.sound_logo.width
+        self.sound_logo.y += self.sound_logo.height
+        # Options
+        self.show_logo = True
+        self.pause = False
 
     def push(self, pos, rot):
         glPushMatrix()
@@ -296,28 +325,65 @@ class App(pyglet.window.Window):
             self.telescope.rot_speed += 10
         elif KEY == key.MINUS:
             self.telescope.rot_speed -= 10
-        elif KEY == key.F:
+        elif KEY == key.F or (KEY == key.ENTER and MOD == key.MOD_CTRL):
             window.set_fullscreen(not window._fullscreen)
+            self.logo.x = self.width  * 0.98 - self.logo.width
+            self.logo.y = self.height  * 0.98 - self.logo.height
+            self.text.x = self.width  * 0.6
+            self.text_2.x = self.width  * 0.6
+            self.sound_logo.x = self.width * 0.98 - self.sound_logo.width
+            self.sound_logo.y = self.sound_logo.height
+        elif KEY == key.L:
+            self.logo.visible = not self.logo.visible
+            self.sound_logo.visible = self.logo.visible
+        elif KEY == key.X:
+            self.telescope.play_sounds += 1
+            if self.telescope.play_sounds > 2:
+                self.telescope.play_sounds = 0
+            if self.telescope.play_sounds:
+                self.sound_logo.image = pyglet.image.load('media/sound.png' if self.telescope.play_sounds > 1 else 'media/sound_silent.png')
+            else:
+                self.sound_logo.image = pyglet.image.load('media/sound_off.png')
+        elif KEY == key.P:
+            self.pause = not self.pause
 
     def update(self, dt):
-        self.telescope.add_module_hits(self.io.get_module_hits())
-        self.camera.update(dt, self.keys)
-        self.telescope.update(dt)
+        mh = self.io.get_module_hits()
+        if not self.pause:
+            self.telescope.add_module_hits(mh)
+            self.camera.update(dt, self.keys)
+            self.telescope.update(dt)
+        
+    def draw_legend(self):
+        glMatrixMode(gl.GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(0, self.width, 0, self.height, -1, 1)
+        self.logo.draw()
+        self.text.draw()
+        self.text_2.draw()
+        self.sound_logo.draw()
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
 
     def on_draw(self):
         self.clear()
         self.set3d()
-        self.push(self.camera.pos, self.camera.rot)
+        self.draw_legend()
         self.fps.draw()
+        self.push(self.camera.pos, self.camera.rot)
         self.telescope.draw()
-        # self.text.draw()
         glPopMatrix()
 
 
 if __name__ == '__main__':
     window = App(width=1024, height=786, caption='Pixel detector model', resizable=True)
     # 3d settings
-    glClearColor(0.9, 0.9, 0.9, 1)
+    glClearColor(*_CLEAR_COLOR)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
