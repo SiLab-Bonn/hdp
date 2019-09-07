@@ -8,13 +8,13 @@ import pybario
 
 
 def pix_idx_to_pos(col, row, detector):
-    height_scale = 0.3
-    return (col + 1) / 80 * detector.width - detector.width / 2, (row + 1) / 336 * detector.height * height_scale - detector.height / 2
+    height_scale = 0.35
+    return (col + 3) / 80 * detector.width * 0.95 - detector.width / 2, (row + 1) / 336 * detector.height * height_scale - detector.height / 2
 
 
 _MAX_HITS = 20  # maximum hits to visualize, new hits delete old
 _MAX_TRACKS = 3  # maximum hits to visualize, new tracks are only drawn when old ones faded out
-_CLEAR_COLOR = (0.9, 0.9, 0.9, 1)
+_CLEAR_COLOR = (0.87, 0.87, 0.87, 1)
 
 
 class Hit(object):
@@ -24,24 +24,24 @@ class Hit(object):
         self.x = x - self.dx
         self.y = y + self.dy
         self.transparency = 100
-    
+
     def update(self, dt):
         # Fade out hit
         self.transparency += dt * 50
         if self.transparency > 255:
             return False
         return True
-    
+
     def draw(self):
         X, Y, Z = self.x + self.dx, self.y + self.dy, 0.5
         alpha = 255 - int(self.transparency)
         pyglet.graphics.draw(4, GL_QUADS, ('v3f', (self.x, self.y, Z, X, self.y, Z, X, Y, Z, self.x, Y, Z)),
-                                          ('c4B', (255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha)))
+                             ('c4B', (255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha)))
 
-        
+
 class Track(object):
     dx, dy = 1.5, 1.5
 
@@ -53,58 +53,58 @@ class Track(object):
         self.track_start = (position[0] - 1000 * direction[0], position[1] - 1000 * direction[1], position[2] - 1000 * direction[2])
         self.track_stop = (position[0] + 1000 * direction[0], position[1] + 1000 * direction[1], position[2] + 1000 * direction[2])
         self.transparency = 100
-    
+
     def update(self, dt):
         # Fade out hit
         self.transparency += dt * 10
         if self.transparency > 255:
             return False
         return True
-    
+
     def draw(self):
         alpha = 255 - int(self.transparency)
         # Show track
         pyglet.graphics.draw(2, GL_LINES, ('v3f', (self.track_start[0], self.track_start[1], self.track_start[2],
                                                    self.track_stop[0], self.track_stop[1], self.track_stop[2])),
-                                          ('c4B', (0, 128, 187, alpha, 0, 128, 187, alpha)))
+                             ('c4B', (0, 128, 187, alpha, 0, 128, 187, alpha)))
         # Show track hits too
         alpha = 255
         x, y = self.p1[0], self.p1[1]
         X, Y, Z = self.p1[0] + self.dx, self.p1[1] + self.dy, self.p1[2] + 0.5
         pyglet.graphics.draw(4, GL_QUADS, ('v3f', (x, y, Z, X, y, Z, X, Y, Z, x, Y, Z)),
-                                          ('c4B', (255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha)))
+                             ('c4B', (255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha)))
         x, y = self.p2[0], self.p2[1]
         X, Y, Z = self.p2[0] + self.dx, self.p2[1] + self.dy, self.p2[2] + 0.5
         pyglet.graphics.draw(4, GL_QUADS, ('v3f', (x, y, Z, X, y, Z, X, Y, Z, x, Y, Z)),
-                                          ('c4B', (255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha,
-                                                   255, 0, 0, alpha)))
+                             ('c4B', (255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha,
+                                      255, 0, 0, alpha)))
 
-                    
+
 class Module(object):
     ''' Single module of the telescope '''
 
     def __init__(self, x, y, z):
-        detector_image = pyglet.image.load('media/DC.png')
+        detector_image = pyglet.image.load('media/SC.png')
         detector = pyglet.sprite.Sprite(detector_image, x=x, y=y, subpixel=True)
         detector.scale = 0.1
         detector.rotation = 180
         detector.x += detector.width / 2.
         detector.y += detector.height / 2.
         detector.z = z
-        
-        self.detector = detector      
+
+        self.detector = detector
         self.hits = []
-        
+
         pix_idc = [(0, 0), (0, 335), (79, 0), (79, 336)]
         for col, row in pix_idc:
             x, y = pix_idx_to_pos(col, row, detector)
             self.hits.append(Hit(x, y))
-        
+
     def add_hits(self, hits):
         if not hits:
             return
@@ -117,12 +117,12 @@ class Module(object):
                 self.hits.append(Hit(x, y))
             else:
                 break
-        
+
     def update(self, dt):
         for i in range(len(self.hits) - 1, -1, -1):
             if not self.hits[i].update(dt):
                 del self.hits[i]
-        
+
     def draw(self):
         glTranslatef(0., 0., self.detector.z)
         self.detector.draw()
@@ -141,13 +141,13 @@ class Telescope(object):
         self.modules = []
         self.modules.append(Module(x, y, 0))
         self.modules.append(Module(x, y, 20))
-        
+
         self.tracks = []
         
         self.hit_sound = pyglet.media.load('media/hit.wav', streaming=False)
         self.track_sound = pyglet.media.load('media/track.wav', streaming=False)
         self.play_sounds = 0
-        
+
     def add_module_hits(self, module_hits):
         has_hits = []
         for i, one_module_hits in enumerate(module_hits):
@@ -167,6 +167,7 @@ class Telescope(object):
                     hit_2 = (self.modules[1].hits[-1].x, self.modules[1].hits[-1].y, self.modules[1].detector.z)
                     self.tracks.append(Track(hit_1, hit_2))
                     glClearColor(0.95, 0.95, 0.95, 1)
+
                     def reset_background(_):
                         glClearColor(*_CLEAR_COLOR)
                     pyglet.clock.schedule_once(reset_background, 0.1)
@@ -174,7 +175,7 @@ class Telescope(object):
                         self.track_sound.play()
         except IndexError:
             pass
-            
+
     def update(self, dt):
         self.rotation += dt * self.rot_speed
         if self.rotation > 360:
@@ -183,7 +184,7 @@ class Telescope(object):
             m.update(dt)
         for i in range(len(self.tracks) - 1, -1, -1):
             if not self.tracks[i].update(dt):
-                del self.tracks[i]                
+                del self.tracks[i]
 
     def draw(self):
         ''' Called for every frame '''
@@ -198,7 +199,7 @@ class Telescope(object):
 class Camera(object):
     ''' 3d camera movements '''
 
-    def __init__(self, pos=[0, -55, 80], rot=[40, 0]):
+    def __init__(self, pos=[0, -85, 80], rot=[40, 0]):
         self.init_pos = pos
         self.init_rot = rot
         self.pos = list(self.init_pos)
@@ -250,7 +251,7 @@ class App(pyglet.window.Window):
             super(App, self).__init__(*args, **kwargs)
         else:
             super().__init__(*args, **kwargs)
-        
+
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
         pyglet.clock.schedule(self.update)
@@ -266,14 +267,14 @@ class App(pyglet.window.Window):
         self.text = pyglet.text.Label("Pixeltreffer", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height,
                                       anchor_x='left', anchor_y='center', color=(255, 0, 0, 220))
         self.text_2 = pyglet.text.Label("Teilchenspuren", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height - 50,
-                                      anchor_x='left', anchor_y='center', color=(0, 128, 187, 220))
-        
+                                        anchor_x='left', anchor_y='center', color=(0, 128, 187, 220))
+
         self.logo = pyglet.sprite.Sprite(pyglet.image.load('media/Silab.png'), x=self.width * 0.98, y=self.height * 0.98, subpixel=True)
         self.logo.scale = 0.2
         self.logo.x -= self.logo.width
-        self.logo.y -= self.logo.height   
-        
-        self.sound_logo = pyglet.sprite.Sprite(pyglet.image.load('media/sound_off.png'), x=self.width * 0.98, y=self.height * 0.02, subpixel=True)     
+        self.logo.y -= self.logo.height
+
+        self.sound_logo = pyglet.sprite.Sprite(pyglet.image.load('media/sound_off.png'), x=self.width * 0.98, y=self.height * 0.02, subpixel=True)
         self.sound_logo.scale = 0.2
         self.sound_logo.x -= self.sound_logo.width
         self.sound_logo.y += self.sound_logo.height
@@ -327,10 +328,10 @@ class App(pyglet.window.Window):
             self.telescope.rot_speed -= 10
         elif KEY == key.F or (KEY == key.ENTER and MOD == key.MOD_CTRL):
             window.set_fullscreen(not window._fullscreen)
-            self.logo.x = self.width  * 0.98 - self.logo.width
-            self.logo.y = self.height  * 0.98 - self.logo.height
-            self.text.x = self.width  * 0.6
-            self.text_2.x = self.width  * 0.6
+            self.logo.x = self.width * 0.98 - self.logo.width
+            self.logo.y = self.height * 0.98 - self.logo.height
+            self.text.x = self.width * 0.6
+            self.text_2.x = self.width * 0.6
             self.sound_logo.x = self.width * 0.98 - self.sound_logo.width
             self.sound_logo.y = self.sound_logo.height
         elif KEY == key.L:
@@ -353,7 +354,7 @@ class App(pyglet.window.Window):
             self.telescope.add_module_hits(mh)
             self.camera.update(dt, self.keys)
             self.telescope.update(dt)
-        
+
     def draw_legend(self):
         glMatrixMode(gl.GL_MODELVIEW)
         glPushMatrix()
@@ -391,5 +392,5 @@ if __name__ == '__main__':
     glEnable(GL_BLEND)  # transparency
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)  # transparency
     glEnable(GL_CULL_FACE)
-    
+
     pyglet.app.run()
