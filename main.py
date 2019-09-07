@@ -9,7 +9,7 @@ import pybario
 
 def pix_idx_to_pos(col, row, detector):
     height_scale = 0.35
-    return (col + 3) / 80 * detector.width * 0.95 - detector.width / 2, (row + 1) / 336 * detector.height * height_scale - detector.height / 2
+    return (col + 3.) / 80 * detector.width * 0.965 - detector.width / 2, (row + 1.) / 336 * detector.height * height_scale - detector.height / 2
 
 
 _MAX_HITS = 20  # maximum hits to visualize, new hits delete old
@@ -140,7 +140,7 @@ class Telescope(object):
 
         self.modules = []
         self.modules.append(Module(x, y, 0))
-        self.modules.append(Module(x, y, 20))
+        self.modules.append(Module(x, y, 40))
 
         self.tracks = []
         
@@ -199,7 +199,7 @@ class Telescope(object):
 class Camera(object):
     ''' 3d camera movements '''
 
-    def __init__(self, pos=[0, -85, 80], rot=[40, 0]):
+    def __init__(self, pos=[6, -120, 160], rot=[40, 0]):
         self.init_pos = pos
         self.init_rot = rot
         self.pos = list(self.init_pos)
@@ -241,6 +241,9 @@ class Camera(object):
             self.pos[1] += s
         if keys[key.SPACE]:
             self.reset()
+            
+        if any(keys):
+            print self.pos, self.rot
 
 
 class App(pyglet.window.Window):
@@ -264,20 +267,24 @@ class App(pyglet.window.Window):
         self.fps = pyglet.window.FPSDisplay(window=self)
         self.fps.label.font_size = 12
         # Legend
-        self.text = pyglet.text.Label("Pixeltreffer", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height,
+        self.text = pyglet.text.Label("Pixeltreffer", font_name="Arial", font_size=40, width=0.1 * self.width, x=self.width + 50, y=0.85*self.height,
                                       anchor_x='left', anchor_y='center', color=(255, 0, 0, 220))
-        self.text_2 = pyglet.text.Label("Teilchenspuren", font_name="Arial", font_size=20, width=0.1 * self.width, x=self.width + 50, y=self.height - 50,
+        self.text_2 = pyglet.text.Label("Teilchenspuren", font_name="Arial", font_size=40, width=0.1 * self.width, x=self.width + 50, y=0.85*self.height - 100,
                                         anchor_x='left', anchor_y='center', color=(0, 128, 187, 220))
 
         self.logo = pyglet.sprite.Sprite(pyglet.image.load('media/Silab.png'), x=self.width * 0.98, y=self.height * 0.98, subpixel=True)
         self.logo.scale = 0.2
-        self.logo.x -= self.logo.width
-        self.logo.y -= self.logo.height
 
         self.sound_logo = pyglet.sprite.Sprite(pyglet.image.load('media/sound_off.png'), x=self.width * 0.98, y=self.height * 0.02, subpixel=True)
         self.sound_logo.scale = 0.2
-        self.sound_logo.x -= self.sound_logo.width
-        self.sound_logo.y += self.sound_logo.height
+        #self.sound_logo.x -= self.sound_logo.width
+        #self.sound_logo.y += self.sound_logo.height
+        self.logo.x = self.width * 0.98 - self.logo.width
+        self.logo.y = self.height * 0.98 - self.logo.height
+        self.text.x = self.width * 0.6
+        self.text_2.x = self.width * 0.6
+        self.sound_logo.x = self.width * 0.98 - self.sound_logo.width
+        self.sound_logo.y = self.sound_logo.height
         # Options
         self.show_logo = True
         self.pause = False
@@ -308,7 +315,7 @@ class App(pyglet.window.Window):
 
     def setLock(self, state):
         self.lock = state
-        self.set_exclusive_mouse(state)
+        self.set_exclusive_mouse(state)  
 
     lock = False
     mouse_lock = property(lambda self: self.lock, setLock)
@@ -327,13 +334,7 @@ class App(pyglet.window.Window):
         elif KEY == key.MINUS:
             self.telescope.rot_speed -= 10
         elif KEY == key.F or (KEY == key.ENTER and MOD == key.MOD_CTRL):
-            window.set_fullscreen(not window._fullscreen)
-            self.logo.x = self.width * 0.98 - self.logo.width
-            self.logo.y = self.height * 0.98 - self.logo.height
-            self.text.x = self.width * 0.6
-            self.text_2.x = self.width * 0.6
-            self.sound_logo.x = self.width * 0.98 - self.sound_logo.width
-            self.sound_logo.y = self.sound_logo.height
+            self.set_fullscreen(not self._fullscreen)
         elif KEY == key.L:
             self.logo.visible = not self.logo.visible
             self.sound_logo.visible = self.logo.visible
@@ -382,7 +383,7 @@ class App(pyglet.window.Window):
 
 
 if __name__ == '__main__':
-    window = App(width=1024, height=786, caption='Pixel detector model', resizable=True)
+    window = App(caption='Pixel detector model', resizable=True, fullscreen=True)
     # 3d settings
     glClearColor(*_CLEAR_COLOR)
     glEnable(GL_DEPTH_TEST)
