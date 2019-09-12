@@ -18,9 +18,10 @@ Start pybar with two modules that send data to:
 - `f`: toggle fullscreen
 - `x`: toggle sound: off/tracks only/hits and tracks
 - `p`: pause
+- `r`: delete all tracks and hits
+- `space`: add MC track or reset camera in mouse view
 - `q e`: move camera down/up
 - `a w s d`: move camera in a plane
-- `space`: reset camera
 - `+ -`: accelerate/deaccelerate module rotation
 - `l`: toggle legend
 - `m`: mouse view (experimental)
